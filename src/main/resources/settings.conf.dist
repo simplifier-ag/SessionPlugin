@@ -1,0 +1,30 @@
+database_mysql {
+  user: "simplifier"
+  pass: "simplifier"
+  host: "localhost"
+  port: 3306
+  database: "simplifier_session"
+}
+
+sessionPlugin {
+  expireTimeout: 60 # Minutes
+}
+
+akkaServer {
+    port = 9873
+    host = "127.0.0.1"
+    hostname = "localhost"
+    pluginName = "sessionPlugin"
+    timeoutSeconds = 5
+}
+
+appServerEndpoint {
+    url = "http://127.0.0.1:8080/plugin/registerPlugin"
+    timeoutSeconds = 60
+}
+
+akka {
+    loglevel = "DEBUG"
+    loggers = ["akka.event.slf4j.Slf4jLogger"]
+}
+

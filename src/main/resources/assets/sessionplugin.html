@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+
+var user = "admin";
+var pass = "admin";
+var baseUrl = "http://localhost:8080/client/1.0/PLUGIN/sessionPlugin/";
+
+function postResult(url, successful, request, textStatus, responseData) {
+	var requestPart = $.extend({'url' : url}, request);
+	var responsePart = {
+		'successful' : successful,
+		'status' : textStatus,
+		'responseData' : responseData
+	}
+	return {
+		'request' : requestPart,
+		'response': responsePart
+	};
+}
+
+function postRequest(path, data, callback) {
+	var url = baseUrl + path;
+	var request = {
+		'username' : user,
+		'password' : pass,
+		'method' : 'POST',
+		'data' : data,
+		'dataType' : 'json',
+		
+	};
+	var requestWithCallbacks = {
+		'success' : function(data, textStatus, xhr) {
+			callback.call(this, postResult(url, true, request, textStatus, data))
+		},
+		'error' : function(xhr, textStatus, error) {
+			callback.call(this, postResult(url, false, request, textStatus, error))
+		}
+	}
+	requestWithCallbacks = $.extend(requestWithCallbacks, request)
+	$.ajax(url, requestWithCallbacks);
+}
+
+function callAjax(url, data, restMethod, onsuccess) {
+	var requestTarget = $('#' + restMethod + 'Request');
+	var responseTarget = $('#' + restMethod + 'Response');
+	requestTarget.closest('.panel').addClass('hidden');
+	responseTarget.closest('.panel').addClass('hidden');
+	var callback = function(result) {
+		requestTarget.text(JSON.stringify(result.request, undefined, 4));
+		responseTarget.text(JSON.stringify(result.response, undefined, 4));
+		requestTarget.closest('.panel').removeClass('hidden');
+		responseTarget.closest('.panel').removeClass('hidden');
+		if (typeof onsuccess !== 'undefined') {
+			onsuccess.call(this, result);
+		}
+	}
+	postRequest(url, data, callback);
+}
+
+function base64Encode(input) {
+	return btoa(input);
+}
+
+function base64Decode(input) {
+	return atob(input);
+}
+
+function createSession() {
+	callAjax('sessionCreateHttp', '{}', 'createsession');
+}
+
+function writeSession() {
+	var json = {};
+	try {
+		json = JSON.parse($('#writeSessionData').val());
+	} catch (e) {
+		alert("Error parsing JSON: " + e);
+		return;
+	}
+	var data = {
+		'sessionid' : $('#writeSessionId').val(),
+		'sessionData' : json
+	};
+	callAjax('sessionWriteHttp', JSON.stringify(data), 'writesession');
+}
+
+function fetchSession() {
+	var data = {
+		'sessionid' : $('#fetchSessionId').val()
+	};
+	callAjax('sessionFetchHttp', JSON.stringify(data), 'fetchsession');
+}
+
+function deleteSession() {
+	var data = {
+		'sessionid' : $('#deleteSessionId').val()
+	};
+	callAjax('sessionDeleteHttp', JSON.stringify(data), 'deletesession');
+}
+
+function writeSessionKey() {
+	var value = "";
+	if ($('#writeSessionKeyTypeString').is(':checked')) {
+		value = $('#writeSessionKeyDataString').val();
+	} else if ($('#writeSessionKeyTypeInt').is(':checked')) {
+		try {
+			value = parseInt($('#writeSessionKeyDataInt').val());
+		} catch (e) {
+			alert("Error parsing Int: " + e);
+			return;
+		}
+	} else {
+		try {
+			value = JSON.parse($('#writeSessionKeyDataJson').val());
+		} catch (e) {
+			alert("Error parsing JSON: " + e);
+			return;
+		}
+	}
+	var data = {
+		'sessionid' : $('#writeSessionKeyId').val(),
+		'key' : $('#writeSessionKeyKey').val(),
+		'sessionData' : value
+	};
+	callAjax('sessionKeyWriteHttp', JSON.stringify(data), 'writesessionkey');
+}
+
+function fetchSessionKey() {
+	var data = {
+		'sessionid' : $('#fetchSessionKeyId').val(),
+		'key' : $('#fetchSessionKeyKey').val()
+	};
+	callAjax('sessionKeyFetchHttp', JSON.stringify(data), 'fetchsessionkey');
+}
+
+function deleteSessionKey() {
+	var data = {
+		'sessionid' : $('#deleteSessionKeyId').val(),
+		'key' : $('#deleteSessionKeyKey').val()
+	};
+	callAjax('sessionKeyDeleteHttp', JSON.stringify(data), 'deletesessionkey');
+}
+
+function applyBaseUrl() {
+	$('.baseUrl').each(function() {
+		var $elem = $(this);
+		if ($elem.data('origText')) {
+			$elem.text($elem.data('origText'));
+		} else {
+			$elem.data('origText', $elem.text());
+		}
+		$elem.prepend(baseUrl);
+	});
+}
+
+$(function() {
+	$('#navTabs a').click(function (e) {
+		e.preventDefault();
+		$(this).tab('show');
+		$('.requestBox').addClass('hidden');
+		$('.responseBox').addClass('hidden');
+	})
+	applyBaseUrl();
+	$('#runCreateSession').on('click', createSession);
+	$('#runWriteSession').on('click', writeSession);
+	$('#runFetchSession').on('click', fetchSession);
+	$('#runDeleteSession').on('click', deleteSession);
+	$('#runWriteSessionKey').on('click', writeSessionKey);
+	$('#runFetchSessionKey').on('click', fetchSessionKey);
+	$('#runDeleteSessionKey').on('click', deleteSessionKey);
+	$('.rest-panel').each(function() {
+		var $panel = $(this);
+		var id = $panel.closest('.tab-pane').prop('id');
+		$('<div class="panel panel-default hidden requestBox"><div class="panel-heading">' +
+				'<h3 class="panel-title">Request</h3></div><div class="panel-body">' +
+				'<pre id="' + id + 'Request"></pre></div></div>' + 
+				'<div class="panel panel-default hidden responseBox"><div class="panel-heading">' +
+				'<h3 class="panel-title">Response</h3></div><div class="panel-body">' +
+				'<pre id="' + id + 'Response"></pre></div></div>').insertAfter($panel);
+	});
+	$('#baseUrl').text(baseUrl);
+	$('#connectionBaseUrl').val(baseUrl);
+	$('#user').text(user);
+	$('#connectionUsername').val(user);
+	$('#pass').text(pass);
+	$('#connectionPassword').val(pass);
+	$('#connectionBaseUrl').on('change', function() {
+		baseUrl = $.trim($('#connectionBaseUrl').val());
+		$('#baseUrl').text(baseUrl);
+		applyBaseUrl();
+	});
+	$('#connectionUsername').on('change', function() {
+		user = $.trim($('#connectionUsername').val());
+		$('#user').text(user);
+	});
+	$('#connectionPassword').on('change', function() {
+		pass = $.trim($('#connectionPassword').val());
+		$('#pass').text(pass);
+	});
+	$('#writeSessionKeyDataIntGroup').hide();
+	$('#writeSessionKeyDataJsonGroup').hide();
+	$('#writeSessionKeyTypeString').on('click', function() {
+		$('#writeSessionKeyDataStringGroup').show();
+		$('#writeSessionKeyDataIntGroup').hide();
+		$('#writeSessionKeyDataJsonGroup').hide();
+	});
+	$('#writeSessionKeyTypeInt').on('click', function() {
+		$('#writeSessionKeyDataStringGroup').hide();
+		$('#writeSessionKeyDataIntGroup').show();
+		$('#writeSessionKeyDataJsonGroup').hide();
+	});
+	$('#writeSessionKeyTypeJson').on('click', function() {
+		$('#writeSessionKeyDataStringGroup').hide();
+		$('#writeSessionKeyDataIntGroup').hide();
+		$('#writeSessionKeyDataJsonGroup').show();
+	});
+});
+
+</script>
+</head>
+<body>
+<div class="container">
+	<div class="row">
+		<h1 class="col-xs-12 col-sm-6">Session Plugin REST Service</h1>
+		<div class="col-xs-12 col-sm-6" onclick="$('#connectionEdit').toggleClass('hidden');" style="cursor: pointer;">
+			<p style="margin-top: 16px; margin-bottom: 0;">BaseUrl: <strong><span id="baseUrl"></span></strong></p>
+			<p style="margin-top: 0; margin-bottom: 0;">User/Pass: <strong><span id="user"></span></strong> / <strong><span id="pass"></span></strong></p>
+		</div>
+	</div>
+	<div class="row hidden" id="connectionEdit">
+		<div class="col-xs-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h3 class="panel-title">Connection Parameters</h3>
+				</div>
+				<div class="panel-body">
+					<form class="form-horizontal">
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="connectionBaseUrl">Base URL</label>
+							<div class="col-sm-10">
+								<input type="text" class="form-control" id="connectionBaseUrl" value="">
+							</div>
+						</div>
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="connectionUsername">Username</label>
+							<div class="col-sm-10">
+								<input type="text" class="form-control" id="connectionUsername" value="">
+							</div>
+						</div>
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="connectionPassword">Password</label>
+							<div class="col-sm-10">
+								<input type="text" class="form-control" id="connectionPassword" value="">
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-xs-12">
+			<ul id="navTabs" class="nav nav-tabs" role="tablist" style="margin-bottom: 16px;">
+				<li role="presentation" class="active">
+					<a href="#createsession" aria-controls="createsession" role="tab" data-toggle="tab">Create Session</a>
+				</li>
+				<li role="presentation">
+					<a href="#writesession" aria-controls="writesession" role="tab" data-toggle="tab">Write Session</a>
+				</li>
+				<li role="presentation">
+					<a href="#fetchsession" aria-controls="fetchsession" role="tab" data-toggle="tab">Fetch Session</a>
+				</li>
+				<li role="presentation">
+					<a href="#deletesession" aria-controls="deletesession" role="tab" data-toggle="tab">Delete Session</a>
+				</li>
+				<li role="presentation">
+					<a href="#writesessionkey" aria-controls="writesessionkey" role="tab" data-toggle="tab">Write Session Key</a>
+				</li>
+				<li role="presentation">
+					<a href="#fetchsessionkey" aria-controls="fetchsessionkey" role="tab" data-toggle="tab">Fetch Session Key</a>
+				</li>
+				<li role="presentation">
+					<a href="#deletesessionkey" aria-controls="deletesessionkey" role="tab" data-toggle="tab">Delete Session Key</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+	<div class="row">
+		<div class="tab-content">
+			<div role="tabpanel" class="col-xs-12 tab-pane active" id="createsession">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Create Session</h3>
+					</div>
+					<div class="panel-body">
+						<p>Create new, empty session for current user.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionCreateHttp</code>
+									</p>
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runCreateSession" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="writesession">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Write Session</h3>
+					</div>
+					<div class="panel-body">
+						<p>Overwrite the complete JSON data of a session with a new object.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionWriteHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="writeSessionId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="writeSessionId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="writeSessionData">Session Data (JSON)</label>
+								<div class="col-sm-10">
+									<textarea rows="10" cols="80" id="writeSessionData" style="width: 100%;" class="form-control">{}</textarea>
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runWriteSession" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="fetchsession">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Fetch Session Data</h3>
+					</div>
+					<div class="panel-body">
+						<p>Fetch the complete JSON data of a session.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionFetchHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="fetchSessionId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="fetchSessionId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runFetchSession" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="deletesession">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Delete Session</h3>
+					</div>
+					<div class="panel-body">
+						<p>Delete a session.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionDeleteHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="deleteSessionId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="deleteSessionId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runDeleteSession" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="writesessionkey">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Write Session Key</h3>
+					</div>
+					<div class="panel-body">
+						<p>Overwrite one key of the session data of a session with a new value.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionKeyWriteHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="writeSessionId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="writeSessionKeyId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="writeSessionId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="writeSessionKeyKey" value="key">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label">Data Type</label>
+								<div class="col-sm-10">
+									<label class="radio-inline">
+										<input type="radio" name="writeSessionKeyType" id="writeSessionKeyTypeString" value="string" checked> String
+									</label>
+									<label class="radio-inline">
+										<input type="radio" name="writeSessionKeyType" id="writeSessionKeyTypeInt" value="int"> Int
+									</label>
+									<label class="radio-inline">
+										<input type="radio" name="writeSessionKeyType" id="writeSessionKeyTypeJson" value="json"> JSON
+									</label>
+								</div>
+							</div>
+							<div class="form-group" id="writeSessionKeyDataStringGroup">
+								<label class="col-sm-2 control-label" for="writeSessionKeyDataString">Session Key Data (String)</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="writeSessionKeyDataString" value="foo">
+								</div>
+							</div>
+							<div class="form-group" id="writeSessionKeyDataIntGroup">
+								<label class="col-sm-2 control-label" for="writeSessionKeyDataInt">Session Key Data (Int)</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="writeSessionKeyDataInt" value="123">
+								</div>
+							</div>
+							<div class="form-group" id="writeSessionKeyDataJsonGroup">
+								<label class="col-sm-2 control-label" for="writeSessionKeyDataJson">Session Key Data (JSON)</label>
+								<div class="col-sm-10">
+									<textarea rows="10" cols="80" id="writeSessionKeyDataJson" style="width: 100%;" class="form-control">{}</textarea>
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runWriteSessionKey" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="fetchsessionkey">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Fetch Session Key Data</h3>
+					</div>
+					<div class="panel-body">
+						<p>Fetch a key of the JSON data of a session.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionKeyFetchHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="fetchSessionKeyId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="fetchSessionKeyId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="fetchSessionKeyKey">Key</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="fetchSessionKeyKey" value="key">
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runFetchSessionKey" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+			<div role="tabpanel" class="col-xs-12 tab-pane" id="deletesessionkey">
+				<div class="rest-panel panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Delete Session Key</h3>
+					</div>
+					<div class="panel-body">
+						<p>Delete a key from the data of a session.</p>
+						<form class="form-horizontal">
+							<div class="form-group">
+								<label class="col-sm-2 control-label">URL</label>
+								<div class="col-sm-10">
+									<p class="form-control-static">
+										<code class="baseUrl">sessionKeyDeleteHttp</code>
+									</p>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="deleteSessionKeyId">Session ID</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="deleteSessionKeyId" value="xxxx-xxxx-xxxx">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-2 control-label" for="deleteSessionKeyKey">Key</label>
+								<div class="col-sm-10">
+									<input type="text" class="form-control" id="deleteSessionKeyKey" value="key">
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="panel-footer" style="text-align: right;">
+						<button id="runDeleteSessionKey" class="btn btn-default">Run</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>
