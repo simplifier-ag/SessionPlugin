@@ -1,9 +1,10 @@
 ThisBuild / organization := "io.simplifier"
 ThisBuild / version := sys.env.get("VERSION").getOrElse("NA")
-ThisBuild / scalaVersion := "2.12.15"
+ThisBuild / scalaVersion := "2.12.20"
 
 ThisBuild / useCoursier := true
 
+ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 
 lazy val sessionPlugin = (project in file("."))
   .settings(
@@ -17,10 +18,10 @@ lazy val sessionPlugin = (project in file("."))
         oldStrategy(x)
     },
     libraryDependencies ++= Seq(
-      "com.mysql"               % "mysql-connector-j"        % "8.2.0"    exclude("com.google.protobuf", "protobuf-java"),
+      "com.mysql"               % "mysql-connector-j"        % "8.4.0"    exclude("com.google.protobuf", "protobuf-java"),
       "com.h2database"          % "h2"                       % "1.3.166"  withSources() withJavadoc(),
       "org.joda"                % "joda-convert"             % "1.7"      withSources() withJavadoc(),
-      "io.github.simplifier-ag" %% "simplifier-plugin-base"  % "1.0.3"    withSources()
+      "io.github.simplifier-ag" %% "simplifier-plugin-base"  % "1.0.4"    withSources()
     )
   )
 
